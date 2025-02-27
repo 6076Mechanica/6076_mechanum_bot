@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.AnalogGyro;
 import edu.wpi.first.wpilibj.Joystick;
@@ -18,6 +19,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 
 
 /**
@@ -33,14 +35,26 @@ public class Robot extends TimedRobot {
   private static final int kRearLeftChannel = 1;
   private static final int kFrontRightChannel = 2;
   private static final int kRearRightChannel = 3;
+
+  private static final int kclawChannel = 4;
+  private static final int kwristChannel = 5;
+  private static final int kelevatorChannel = 6;
+
   private static final int kGyroPort = 0;
-  private static final int kJoystickPort = 0;
+  private static final int kDriverPort = 0;
+  public static final int kOperatorPort = 1;
   private static final boolean boolBreakMode = false;
 
   private final MecanumDrive m_robotDrive;
   private final AnalogGyro m_gyro = new AnalogGyro(kGyroPort);
-  private final Joystick m_joystick = new Joystick(kJoystickPort);
-  private final XboxController operatorController = new XboxController(constants.operatorStick);
+  private final Joystick m_joystick = new Joystick(kDriverPort);
+  private final XboxController operatorController = new XboxController(kOperatorPort);
+
+  private final SparkMax elevatorSpark = new SparkMax(kelevatorChannel, MotorType.kBrushless);
+  private final SparkMax clawSpark = new SparkMax(kclawChannel, MotorType.kBrushless);
+  private final WPI_VictorSPX wristVictor = new WPI_VictorSPX(kclawChannel);
+  private final SparkMaxConfig clawConfigLowAmp = new SparkMaxConfig();
+  private final SparkMaxConfig clawConfigHighAmp = new SparkMaxConfig();
 
   /** Called once at the beginning of the robot program. */
   public Robot() {
@@ -48,8 +62,14 @@ public class Robot extends TimedRobot {
     SparkMax rearLeft = new SparkMax(kRearLeftChannel, MotorType.kBrushless);
     SparkMax frontRight = new SparkMax(kFrontRightChannel, MotorType.kBrushless);
     SparkMax rearRight = new SparkMax(kRearRightChannel, MotorType.kBrushless);
+    
+
     SparkMaxConfig config1 = new SparkMaxConfig();
     SparkMaxConfig config2 = new SparkMaxConfig();
+    SparkMaxConfig clawConfig = new SparkMaxConfig();
+    SparkMaxConfig elevatorConfig = new SparkMaxConfig();
+
+    elevatorClaw elevatorClaw = new elevatorClaw();
 
 
     // Inverted configuration for the motors. Change the boolean of kbreakMode to true to enable/disable break mode.
@@ -62,7 +82,17 @@ public class Robot extends TimedRobot {
       config2.inverted(false).idleMode(IdleMode.kCoast);
     }
 
-    // Invert the right side motors.
+    // Configure the claw motor.
+    // Stall limit current determines how hard the motor tries to turn before stalling/giving up. 
+    // Make sure this is not too high so that the motor won't burn out, and not too low that it won't work.
+    clawConfig.idleMode(IdleMode.kBrake);
+    clawSpark.configure(clawConfig, null, null);
+
+    // Configure the elevator motor.
+    elevatorConfig.idleMode(IdleMode.kBrake);
+    elevatorSpark.configure(elevatorConfig, null, null);
+
+    // Invert the right side drive motors.
     // You may need to change or remove this to match your robot.
     frontRight.configure(config1, null, null);
     rearRight.configure(config1, null, null);
@@ -79,22 +109,87 @@ public class Robot extends TimedRobot {
     SendableRegistry.addChild(m_robotDrive, rearLeft);
     SendableRegistry.addChild(m_robotDrive, frontRight);
     SendableRegistry.addChild(m_robotDrive, rearRight);
+
+    // This is the claw control section:
   }
 
-  // public static void updateControls() {
-  //   // Call this method in teleopPeriodic() to upstate controls. 
-  //   // The controls are renamed via this method for ease of reading, but consequently must be updated constantly.
 
-  //   double 
 
-  // }
+
+  // Maybe a function to changes sensitivity for the operator?
 
   /** Mecanum drive is used with the gyro angle as an input. */
   @Override
   public void teleopPeriodic() {
+    double elevatorSpeed = MathUtil.applyDeadband(operatorController.getRightY(), constants.operatorDeadband);
+    double wristSpeed = MathUtil.applyDeadband(operatorController.getRightY(), constants.operatorDeadband) * 0.5; // 50% speed
+    double clawOpen = MathUtil.applyDeadband(operatorController.getRightTriggerAxis(), constants.operatorDeadband);
+    double clawClose = MathUtil.applyDeadband(operatorController.getLeftTriggerAxis(), constants.operatorDeadband);
     // m_robotDrive.driveCartesian(
     //     -m_joystick.getY(), -m_joystick.getX(), -m_joystick.getZ(), m_gyro.getRotation2d());
+
     m_robotDrive.driveCartesian(
       -m_joystick.getY(), -m_joystick.getX(), -m_joystick.getZ());
+    
+
+
+    // This is the elevator control section:
+    {
+      if (elevatorSpeed > 0) {
+        elevatorSpeed = elevatorSpeed * constants.elExtensionSpeed;
+      } else if (elevatorSpeed < 0) {
+        elevatorSpeed = elevatorSpeed * constants.elRetractionSpeed;
+      } else {
+        elevatorSpeed = 0;
+      }
+  
+      elevatorSpark.set(elevatorSpeed);
+    }
+    
+
+
+
+    // This is the wrist control section:
+    // This hopefully gives the operator more control when the wrist is hanging out. it will likely tend to
+    // dip down when do driven, so if the operator gives minimal input, it will use the steady speed found in constanst file.
+    // *this will likely need to be adjuested. may set it somewhere between what is needed for the coral vs the ball.
+    {
+      if (wristSpeed >= 0.65) {
+        wristSpeed = constants.wristRegSpeed;
+      } else if (wristSpeed < 0.65 || wristSpeed > 0) {
+        wristSpeed = constants.wristSteadySpeed;
+      } else if (wristSpeed <= -0.65) {
+        wristSpeed = -constants.wristRegSpeed;
+      } else if (wristSpeed > -0.65 || wristSpeed < 0) {
+        wristSpeed = -constants.wristSteadySpeed;
+      } else {
+        wristSpeed = 0;
+      }
+
+      wristVictor.set(wristSpeed);
+    }
+
+
+
+
+    // This is the claw control section:
+    {
+      double triggerMinimum = 0.5; // This is the minimum value for the triggers to be considered pressed.
+      double clawAction;
+      if (clawOpen > triggerMinimum || clawClose < triggerMinimum) {
+        clawAction = constants.clawSpeed;
+        clawSpark.configure(clawConfigLowAmp, null, null); // Hopefully this does not throw an error. if so get rid of it
+      } else if (clawClose > triggerMinimum || clawOpen < triggerMinimum) {
+        clawAction = constants.clawSpeedReverse;
+        clawSpark.configure(clawConfigHighAmp, null, null); // Hopefully this does not throw an error. If so get rid of it
+      } else {
+        clawAction = 0;
+      }
+
+      clawSpark.set(clawAction);
+    }
+
   }
+
+  
 }
