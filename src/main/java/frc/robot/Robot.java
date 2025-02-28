@@ -37,9 +37,9 @@ public class Robot extends TimedRobot {
   private static final int kFrontRightChannel = 2;
   private static final int kRearRightChannel = 3;
 
-  private static final int kclawChannel = 4;
-  private static final int kwristChannel = 5;
-  private static final int kelevatorChannel = 6;
+  private static final int kclawChannel = 6;
+  private static final int kwristChannel = 7;
+  private static final int kelevatorChannel = 5;
 
   private static final int kGyroPort = 0;
   private static final int kDriverPort = 0;
