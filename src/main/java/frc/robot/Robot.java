@@ -20,6 +20,7 @@ import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
+import frc.robot.joystickScale;
 
 
 /**
@@ -52,7 +53,7 @@ public class Robot extends TimedRobot {
 
   private final SparkMax elevatorSpark = new SparkMax(kelevatorChannel, MotorType.kBrushless);
   private final SparkMax clawSpark = new SparkMax(kclawChannel, MotorType.kBrushless);
-  private final WPI_VictorSPX wristVictor = new WPI_VictorSPX(kclawChannel);
+  private final WPI_VictorSPX wristVictor = new WPI_VictorSPX(kwristChannel);
   private final SparkMaxConfig clawConfigLowAmp = new SparkMaxConfig();
   private final SparkMaxConfig clawConfigHighAmp = new SparkMaxConfig();
 
@@ -69,8 +70,8 @@ public class Robot extends TimedRobot {
     SparkMaxConfig clawConfig = new SparkMaxConfig();
     SparkMaxConfig elevatorConfig = new SparkMaxConfig();
 
-    elevatorClaw elevatorClaw = new elevatorClaw();
-
+    // Set wrist inverted
+   // wristVictor.setInverted(false)
 
     // Inverted configuration for the motors. Change the boolean of kbreakMode to true to enable/disable break mode.
     // Congig1 is for the rightside motors, as they are inverted, config2 is for the leftside motors.
@@ -121,24 +122,35 @@ public class Robot extends TimedRobot {
   /** Mecanum drive is used with the gyro angle as an input. */
   @Override
   public void teleopPeriodic() {
-    double elevatorSpeed = MathUtil.applyDeadband(operatorController.getRightY(), constants.operatorDeadband);
+    double joystickSpeedY;
+    double joystickSpeedX;
+    double joystickSpeedZ;
+
+    double elevatorSpeed = MathUtil.applyDeadband(operatorController.getLeftY(), constants.operatorDeadband);
     double wristSpeed = MathUtil.applyDeadband(operatorController.getRightY(), constants.operatorDeadband) * 0.5; // 50% speed
     double clawOpen = MathUtil.applyDeadband(operatorController.getRightTriggerAxis(), constants.operatorDeadband);
     double clawClose = MathUtil.applyDeadband(operatorController.getLeftTriggerAxis(), constants.operatorDeadband);
     // m_robotDrive.driveCartesian(
     //     -m_joystick.getY(), -m_joystick.getX(), -m_joystick.getZ(), m_gyro.getRotation2d());
 
+   if (m_joystick.getRawButton(1)) {
     m_robotDrive.driveCartesian(
-      -m_joystick.getY(), -m_joystick.getX(), -m_joystick.getZ());
-    
-
-
+      -joystickScale.ScaleJoystick(m_joystick.getY(), 0.0, 1.35) * 0.35, 
+      -joystickScale.ScaleJoystick(m_joystick.getX(), 0.0, 1.35) * 0.35, 
+      -joystickScale.ScaleJoystick(m_joystick.getZ(), 0.0, 1.35) * 0.35);
+   } else { 
+    m_robotDrive.driveCartesian(
+      -joystickScale.ScaleJoystick(m_joystick.getY(), 0.0, 1.75), 
+      -joystickScale.ScaleJoystick(m_joystick.getX(), 0.0, 1.75), 
+      -joystickScale.ScaleJoystick(m_joystick.getZ(), 0.0, 1.75));
+   }
     // This is the elevator control section:
     {
       if (elevatorSpeed > 0) {
-        elevatorSpeed = elevatorSpeed * constants.elExtensionSpeed;
+        elevatorSpeed = elevatorSpeed;
+        // elevatorSpeed = elevatorSpeed * constants.elExtensionSpeed;
       } else if (elevatorSpeed < 0) {
-        elevatorSpeed = elevatorSpeed * constants.elRetractionSpeed;
+        elevatorSpeed = constants.elRetractionSpeed;
       } else {
         elevatorSpeed = 0;
       }
