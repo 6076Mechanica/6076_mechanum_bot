@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.XboxController;
 
 import com.revrobotics.spark.SparkBase;
@@ -32,10 +33,10 @@ public class Robot extends TimedRobot {
   // gyro value of 360 is set to correspond to one full revolution
   private static final double kVoltsPerDegreePerSecond = 0.0128;
 
-  private static final int kFrontLeftChannel = 0;
-  private static final int kRearLeftChannel = 1;
+  private static final int kFrontLeftChannel = 1;
+  private static final int kRearLeftChannel = 3;
   private static final int kFrontRightChannel = 2;
-  private static final int kRearRightChannel = 3;
+  private static final int kRearRightChannel = 4;
 
   private static final int kclawChannel = 6;
   private static final int kwristChannel = 7;
@@ -56,9 +57,12 @@ public class Robot extends TimedRobot {
   private final WPI_VictorSPX wristVictor = new WPI_VictorSPX(kwristChannel);
   private final SparkMaxConfig clawConfigLowAmp = new SparkMaxConfig();
   private final SparkMaxConfig clawConfigHighAmp = new SparkMaxConfig();
+  
 
   /** Called once at the beginning of the robot program. */
   public Robot() {
+    SmartDashboard.putNumber("check", kDriverPort);
+
     SparkMax frontLeft = new SparkMax(kFrontLeftChannel, MotorType.kBrushless);
     SparkMax rearLeft = new SparkMax(kRearLeftChannel, MotorType.kBrushless);
     SparkMax frontRight = new SparkMax(kFrontRightChannel, MotorType.kBrushless);
@@ -69,6 +73,8 @@ public class Robot extends TimedRobot {
     SparkMaxConfig config2 = new SparkMaxConfig();
     SparkMaxConfig clawConfig = new SparkMaxConfig();
     SparkMaxConfig elevatorConfig = new SparkMaxConfig();
+    clawConfigHighAmp.inverted(true);
+    clawConfigLowAmp.inverted(true);
 
     // Set wrist inverted
    // wristVictor.setInverted(false)
@@ -86,7 +92,7 @@ public class Robot extends TimedRobot {
     // Configure the claw motor.
     // Stall limit current determines how hard the motor tries to turn before stalling/giving up. 
     // Make sure this is not too high so that the motor won't burn out, and not too low that it won't work.
-    clawConfig.idleMode(IdleMode.kBrake);
+    clawConfig.idleMode(IdleMode.kBrake).inverted(true);
     clawSpark.configure(clawConfig, null, null);
 
     // Configure the elevator motor.
@@ -126,35 +132,41 @@ public class Robot extends TimedRobot {
     double joystickSpeedX;
     double joystickSpeedZ;
 
-    double elevatorSpeed = MathUtil.applyDeadband(operatorController.getLeftY(), constants.operatorDeadband);
+    double elevatorSpeed = -MathUtil.applyDeadband(operatorController.getLeftY(), constants.operatorDeadband);
     double wristSpeed = MathUtil.applyDeadband(operatorController.getRightY(), constants.operatorDeadband) * 0.5; // 50% speed
     double clawOpen = MathUtil.applyDeadband(operatorController.getRightTriggerAxis(), constants.operatorDeadband);
     double clawClose = MathUtil.applyDeadband(operatorController.getLeftTriggerAxis(), constants.operatorDeadband);
     // m_robotDrive.driveCartesian(
     //     -m_joystick.getY(), -m_joystick.getX(), -m_joystick.getZ(), m_gyro.getRotation2d());
 
-   if (m_joystick.getRawButton(1)) {
     m_robotDrive.driveCartesian(
-      -joystickScale.ScaleJoystick(m_joystick.getY(), 0.0, 1.35) * 0.35, 
-      -joystickScale.ScaleJoystick(m_joystick.getX(), 0.0, 1.35) * 0.35, 
-      -joystickScale.ScaleJoystick(m_joystick.getZ(), 0.0, 1.35) * 0.35);
-   } else { 
-    m_robotDrive.driveCartesian(
-      -joystickScale.ScaleJoystick(m_joystick.getY(), 0.0, 1.75), 
-      -joystickScale.ScaleJoystick(m_joystick.getX(), 0.0, 1.75), 
-      -joystickScale.ScaleJoystick(m_joystick.getZ(), 0.0, 1.75));
-   }
+      -MathUtil.applyDeadband(m_joystick.getY(), constants.driverDeadband), 
+      MathUtil.applyDeadband(m_joystick.getX(), constants.driverDeadband), 
+      MathUtil.applyDeadband(m_joystick.getZ(), constants.driverDeadband));
+
+  //  if (m_joystick.getRawButton(1)) {
+  //   m_robotDrive.driveCartesian(
+  //     -joystickScale.ScaleJoystick(m_joystick.getY(), 0.0, 1.35) * 0.35, 
+  //     -joystickScale.ScaleJoystick(m_joystick.getX(), 0.0, 1.35) * 0.35, 
+  //     -joystickScale.ScaleJoystick(m_joystick.getZ(), 0.0, 1.35) * 0.35);
+  //  } else { 
+  //   m_robotDrive.driveCartesian(
+  //     -joystickScale.ScaleJoystick(m_joystick.getY(), 0.0, 1.75), 
+  //     -joystickScale.ScaleJoystick(m_joystick.getX(), 0.0, 1.75), 
+  //     -joystickScale.ScaleJoystick(m_joystick.getZ(), 0.0, 1.75));
+  //  }
     // This is the elevator control section:
     {
       if (elevatorSpeed > 0) {
         elevatorSpeed = elevatorSpeed;
         // elevatorSpeed = elevatorSpeed * constants.elExtensionSpeed;
       } else if (elevatorSpeed < 0) {
-        elevatorSpeed = constants.elRetractionSpeed;
+        elevatorSpeed = -constants.elRetractionSpeed;
       } else {
         elevatorSpeed = 0;
       }
-  
+      
+      SmartDashboard.putNumber("Elevator Speed", elevatorSpeed);
       elevatorSpark.set(elevatorSpeed);
     }
     
@@ -166,19 +178,22 @@ public class Robot extends TimedRobot {
     // dip down when do driven, so if the operator gives minimal input, it will use the steady speed found in constanst file.
     // *this will likely need to be adjuested. may set it somewhere between what is needed for the coral vs the ball.
     {
+      double motorSpeed;
+      wristSpeed = wristSpeed * 2;
       if (wristSpeed >= 0.65) {
-        wristSpeed = constants.wristRegSpeed;
-      } else if (wristSpeed < 0.65 || wristSpeed > 0) {
-        wristSpeed = constants.wristSteadySpeed;
+        motorSpeed = constants.wristRegSpeed;
+      } else if (wristSpeed < 0.65 && wristSpeed > 0) {
+        motorSpeed = constants.wristSteadySpeed;
       } else if (wristSpeed <= -0.65) {
-        wristSpeed = -constants.wristRegSpeed;
-      } else if (wristSpeed > -0.65 || wristSpeed < 0) {
-        wristSpeed = -constants.wristSteadySpeed;
+        motorSpeed = -constants.wristRegSpeed;
+      } else if (wristSpeed > -0.65 && wristSpeed < 0) {
+        motorSpeed = -constants.wristSteadySpeed;
       } else {
-        wristSpeed = 0;
+        motorSpeed = 0;
       }
-
-      wristVictor.set(wristSpeed);
+      SmartDashboard.putNumber("Wrist Input", wristSpeed);
+      SmartDashboard.putNumber("Wrist Speed", motorSpeed);
+      wristVictor.set(motorSpeed);
     }
 
 
@@ -188,16 +203,17 @@ public class Robot extends TimedRobot {
     {
       double triggerMinimum = 0.5; // This is the minimum value for the triggers to be considered pressed.
       double clawAction;
-      if (clawOpen > triggerMinimum || clawClose < triggerMinimum) {
+      if (clawOpen > triggerMinimum && clawClose < triggerMinimum) {
         clawAction = constants.clawSpeed;
         clawSpark.configure(clawConfigLowAmp, null, null); // Hopefully this does not throw an error. if so get rid of it
-      } else if (clawClose > triggerMinimum || clawOpen < triggerMinimum) {
+      } else if (clawClose > triggerMinimum && clawOpen < triggerMinimum) {
         clawAction = constants.clawSpeedReverse;
         clawSpark.configure(clawConfigHighAmp, null, null); // Hopefully this does not throw an error. If so get rid of it
       } else {
         clawAction = 0;
       }
 
+      SmartDashboard.putNumber("Claw Speed", clawAction);
       clawSpark.set(clawAction);
     }
 
