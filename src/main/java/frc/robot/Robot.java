@@ -97,7 +97,7 @@ public class Robot extends TimedRobot {
     // Configure the claw motor.
     // Stall limit current determines how hard the motor tries to turn before stalling/giving up. 
     // Make sure this is not too high so that the motor won't burn out, and not too low that it won't work.
-    clawConfig.idleMode(IdleMode.kBrake).inverted(true);
+    clawConfig.idleMode(IdleMode.kBrake).inverted(true).smartCurrentLimit(8);
     clawSpark.configure(clawConfig, null, null);
 
     // Configure the elevator motor.
@@ -227,10 +227,8 @@ public class Robot extends TimedRobot {
       double clawAction;
       if (clawOpen > triggerMinimum && clawClose < triggerMinimum) {
         clawAction = constants.clawSpeed;
-        clawSpark.configure(clawConfigLowAmp, null, null); // Hopefully this does not throw an error. if so get rid of it
       } else if (clawClose > triggerMinimum && clawOpen < triggerMinimum) {
         clawAction = constants.clawSpeedReverse;
-        clawSpark.configure(clawConfigHighAmp, null, null); // Hopefully this does not throw an error. If so get rid of it
       } else {
         clawAction = 0;
       }
