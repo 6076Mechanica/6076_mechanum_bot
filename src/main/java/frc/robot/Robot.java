@@ -12,6 +12,11 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
+import edu.wpi.first.wpilibj2.command.ParallelRaceGroup;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj.XboxController;
 
 import com.revrobotics.spark.SparkBase;
@@ -120,8 +125,25 @@ public class Robot extends TimedRobot {
     // This is the claw control section:
   }
 
+  // Speical thanks to Zach! This is the auto part:
+  SequentialCommandGroup moveForward;
+
+  @Override
+  public void autonomousInit() {
+    moveForward = new SequentialCommandGroup(
+      new ParallelRaceGroup(new InstantCommand(() -> m_robotDrive.driveCartesian(0.5, 0, 0)),
+      new WaitCommand(2)),
+      new InstantCommand(() -> m_robotDrive.driveCartesian(0, 0, 0))
+    );
+    moveForward.schedule();
+  }
 
 
+  @Override
+  public void teleopInit() {
+    if (moveForward != null)
+      moveForward.cancel();
+  }
 
   // Maybe a function to changes sensitivity for the operator?
 
