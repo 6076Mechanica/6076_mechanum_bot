@@ -122,20 +122,26 @@ public class Robot extends TimedRobot {
     SendableRegistry.addChild(m_robotDrive, frontRight);
     SendableRegistry.addChild(m_robotDrive, rearRight);
 
-    // This is the claw control section:
   }
 
-  // Speical thanks to Zach! This is the auto part:
+  // Speical thanks to Robert! This is the auto part:
   SequentialCommandGroup moveForward;
 
   @Override
   public void autonomousInit() {
-    moveForward = new SequentialCommandGroup(
-      new ParallelRaceGroup(new InstantCommand(() -> m_robotDrive.driveCartesian(0.5, 0, 0)),
-      new WaitCommand(2)),
+    long t= System.currentTimeMillis();
+    long end = t+5000;
+    while(System.currentTimeMillis() < end) {
+      // do something
+       moveForward = new SequentialCommandGroup(
+      new ParallelRaceGroup(new InstantCommand(() -> m_robotDrive.driveCartesian(0.35, 0, 0)),
+      new WaitCommand(10)),
       new InstantCommand(() -> m_robotDrive.driveCartesian(0, 0, 0))
     );
     moveForward.schedule();
+
+    }
+    
   }
 
 

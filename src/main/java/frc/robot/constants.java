@@ -2,7 +2,7 @@ package frc.robot;
 
 public class constants {
     public static final int driverStick = 0;
-    public static final double elRetractionSpeed = 0.60; // Originally 0.5
+    public static final double elRetractionSpeed = 1; // Originally 0.5
     public static final double elExtensionSpeed = 1; // Originally 1
 
     public static final double operatorDeadband = 0.1; // Originally 0.0
