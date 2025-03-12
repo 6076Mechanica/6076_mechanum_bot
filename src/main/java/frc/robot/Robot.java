@@ -128,7 +128,7 @@ public class Robot extends TimedRobot {
   SequentialCommandGroup moveForward;
 
   @Override
-  public void autonomousInit() {
+  public void autonomousPeriodic() {
     long t= System.currentTimeMillis();
     long end = t+5000;
     while(System.currentTimeMillis() < end) {
@@ -140,7 +140,6 @@ public class Robot extends TimedRobot {
     moveForward.schedule();
 
     }
-    
   }
 
 
