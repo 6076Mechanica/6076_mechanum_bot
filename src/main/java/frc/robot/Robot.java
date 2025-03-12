@@ -132,7 +132,6 @@ public class Robot extends TimedRobot {
     long t= System.currentTimeMillis();
     long end = t+5000;
     while(System.currentTimeMillis() < end) {
-      // do something
        moveForward = new SequentialCommandGroup(
       new ParallelRaceGroup(new InstantCommand(() -> m_robotDrive.driveCartesian(0.35, 0, 0)),
       new WaitCommand(10)),
